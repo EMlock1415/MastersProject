@@ -1,0 +1,5 @@
+numpy
+healpy
+logging
+matplotlib
+scipy
