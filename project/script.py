@@ -3,6 +3,7 @@ import healpy as hp
 import matplotlib.pyplot as plt
 import time
 import scipy
+import random
 
 import logging
 log = logging.getLogger("healpy")
@@ -145,10 +146,10 @@ def create_disc():
     disc = d
 
 def simulation():
-    seed = np.random.default_rng(1)
+    np.random.seed(1)
     NSIDE = 2048
     pixels = hp.nside2npix(NSIDE)
-    fake = seed.normal(pixels+1)
+    fake = np.random.normal(loc=0,scale=1e-5,size=(pixels))
     hp.mollview(fake)
     x = input("Simulation file name: ")
     plt.savefig("../../dump/{}.png".format(x))
