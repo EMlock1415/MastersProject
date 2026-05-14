@@ -20,6 +20,7 @@ print("Approximate resolution at NSIDE {} is {:.3} deg. {} total pixels".format(
 
 wmap_map_I = hp.read_map("wmap_band_iqumap_r9_7yr_W_v4.fits")
 O_NSIDE = hp.get_nside(wmap_map_I)
+print(O_NSIDE)
 O_NPIX = hp.nside2npix(O_NSIDE)
 res_map = hp.ud_grade(wmap_map_I, nside_out=NSIDE)
 hp.mollview(wmap_map_I, unit="mK", norm="hist")
@@ -190,8 +191,6 @@ print("Mean of skew: {}".format(skew_mean))
 print("Variation of the skew: {}".format(skew_var))
 print("Standard deviation of the skew: {} = {}".format(np.sqrt(skew_var), skew_std))
 
-
-
 # %%
 
 '''Kurtosis plot?'''
@@ -217,5 +216,6 @@ print("Standard deviation of kurtosis: {}".format(kurt_std))
 # %%
 
 '''Another statistic????'''
+
 
 
