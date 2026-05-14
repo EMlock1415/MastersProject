@@ -146,12 +146,25 @@ def create_disc():
     disc = d
 
 def simulation():
-    np.random.seed(1)
+    seed = input("Seed")
+    np.random.seed(int(seed))
     NSIDE = 2048
     pixels = hp.nside2npix(NSIDE)
     fake = np.random.normal(loc=0,scale=1e-5,size=(pixels))
-    hp.mollview(fake)
+
+    lmax = 512
+
+    cl = np.zeros(lmax + 1)
+    ells = np.arange(lmax + 1)
+    cl[1:] = 1/(ells[1:] * (ells[1:] + 1))
+
+    alm = hp.synalm(cl,lmax=lmax)
+    cmb_map = hp.alm2map(alm,NSIDE,lmax)
+
+
+    hp.mollview(cmb_map)
     x = input("Simulation file name: ")
+    plt.title("CMB sim: seed = {}, lmax = {}, nside = {}".format(seed,lmax,NSIDE))
     plt.savefig("../../dump/{}.png".format(x))
 
 
