@@ -152,20 +152,22 @@ def simulation():
     pixels = hp.nside2npix(NSIDE)
     fake = np.random.normal(loc=0,scale=1e-5,size=(pixels))
 
-    lmax = 512
+    lmax = int(input("Highest multipole? "))
 
     cl = np.zeros(lmax + 1)
     ells = np.arange(lmax + 1)
     cl[1:] = 1/(ells[1:] * (ells[1:] + 1))
 
     alm = hp.synalm(cl,lmax=lmax)
+    print(alm[3])
     cmb_map = hp.alm2map(alm,NSIDE,lmax)
 
 
-    hp.mollview(cmb_map)
+    hp.mollview(cmb_map, unit="K", norm="hist")
     x = input("Simulation file name: ")
     plt.title("CMB sim: seed = {}, lmax = {}, nside = {}".format(seed,lmax,NSIDE))
     plt.savefig("../../dump/{}.png".format(x))
+    plt.close()
 
 
 
