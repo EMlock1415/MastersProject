@@ -3,3 +3,4 @@ healpy
 logging
 matplotlib
 scipy
+camb
