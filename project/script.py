@@ -6,7 +6,7 @@ import scipy
 import random
 import csv
 import camb
-from camb import model
+
 
 import logging
 log = logging.getLogger("healpy")
@@ -168,15 +168,30 @@ def simulation():
     global map
     seed = input("Seed")
     np.random.seed(int(seed))
-    NSIDE = 2048
+    NSIDE = int(input("NSIDE: "))
     pixels = hp.nside2npix(NSIDE)
     fake = np.random.normal(loc=0,scale=1e-5,size=(pixels))
 
     lmax = int(input("Highest multipole? "))
 
-    cl = np.zeros(lmax + 1)
+    np.random.seed(int(seed))
+    pars = camb.CAMBparams()
+    pars.set_cosmology(H0=67.5)
+    pars.set_for_lmax(lmax)
+    np.random.seed(int(seed))
+    results = camb.get_results(pars)
+    cl = results.get_cmb_power_spectra(
+        params=pars,
+        lmax=lmax,
+        CMB_unit = 'K',
+        raw_cl=True
+    )['total'][:,0]
+
+
+    '''cl = np.zeros(lmax + 1)
     ells = np.arange(lmax + 1)
-    cl[1:] = 1/(ells[1:] * (ells[1:] + 1))
+    cl[1:] = 1/(ells[1:] * (ells[1:] + 1))'''
+    np.random.seed(int(seed))
 
     alm = hp.synalm(cl,lmax=lmax)
 
@@ -185,7 +200,7 @@ def simulation():
     print(scipy.stats.normaltest(floats))
 
     print(alm[3])
-    cmb_map = hp.alm2map(alm,NSIDE,lmax)
+    cmb_map = hp.alm2map(alm,NSIDE,lmax)*(10**4)
 
 
     hp.mollview(cmb_map, unit="K", norm="hist")
@@ -246,20 +261,25 @@ def bulk_simulate():
         
         for i in range(amount):
             np.random.seed(int(i+start_seed))
-            NSIDE = 2048
-            lmax = 2048
+            NSIDE = 1024
+            lmax = 4096
 
+            pars = camb.CAMBparams()
+            pars.set_cosmology(H0=67.5)
+            pars.set_for_lmax(lmax)
+            results = camb.get_results(pars)
+            cl = results.get_cmb_power_spectra(
+                params=pars,
+                lmax=lmax,
+                CMB_unit = 'K',
+                raw_cl=True
+            )['total'][:,0]
             
-
-            cl = np.zeros(lmax + 1)
+            '''cl = np.zeros(lmax + 1)
             ells = np.arange(lmax + 1)
-            cl[1:] = 1/(ells[1:] * (ells[1:] + 1))
-
-            
+            cl[1:] = 1/(ells[1:] * (ells[1:] + 1))'''
 
             alm = hp.synalm(cl,lmax=lmax)
-
-            
             
             cmb_map = hp.alm2map(alm,NSIDE,lmax)
 
@@ -270,7 +290,7 @@ def bulk_simulate():
             dagostino = scipy.stats.normaltest(cmb_map)
 
             statistic = [i,mean,variance,skew,kurt,dagostino]
-            with open("../../dump/statistics.csv", "a") as file:
+            with open("../../dump/statistics{}{}.csv", "a") as file:
                 writer = csv.writer(file)
                 writer.writerow(statistic)
             print(statistic)
@@ -335,6 +355,8 @@ while (inputting == True):
         function_dictionary[inputt]()
     except:
         print("Something went wrong")
+    
+    '''function_dictionary[inputt]()'''
     
 
 
