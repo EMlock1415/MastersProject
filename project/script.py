@@ -407,6 +407,7 @@ function_dictionary = {
     "simulate_two" : simulate_two,
     "bad_sim" : bad_sim,
     "bulk" : bulk_simulate,
+    "masked_bulk" : masked_bulk_sim,
     "alm_stats" : alm_stats,
 }
 
