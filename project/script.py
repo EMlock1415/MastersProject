@@ -34,6 +34,7 @@ map=[]
 masked_map = []
 disc = []
 mask = hp.read_map("../../PlanckMaps/COM_Mask_CMB-common-Mask-Int_2048_R3.00.fits")
+maskk = np.zeros(pixels)
 
 
 
@@ -195,11 +196,9 @@ def simulation():
 
     alm = hp.synalm(cl,lmax=lmax)
 
-    floats = [float(i) for i in alm]
+    #floats = [float(i) for i in alm]
 
-    print(scipy.stats.normaltest(floats))
-
-    print(alm[3])
+    
     cmb_map = hp.alm2map(alm,NSIDE,lmax)*(10**4)
 
 
@@ -261,8 +260,8 @@ def bulk_simulate():
         
         for i in range(amount):
             np.random.seed(int(i+start_seed))
-            NSIDE = 1024
-            lmax = 4096
+            NSIDE = 2048
+            lmax = 1024
 
             pars = camb.CAMBparams()
             pars.set_cosmology(H0=67.5)
@@ -290,7 +289,7 @@ def bulk_simulate():
             dagostino = scipy.stats.normaltest(cmb_map)
 
             statistic = [i,mean,variance,skew,kurt,dagostino]
-            with open("../../dump/statistics{}{}.csv", "a") as file:
+            with open("../../dump/statistics{}{}.csv".format(start_seed,amount), "a") as file:
                 writer = csv.writer(file)
                 writer.writerow(statistic)
             print(statistic)
@@ -303,6 +302,7 @@ def bad_sim():
     map = fake
 
 def make_mask():
+    global maskk
     res = 20
     size = 25
     vector = hp.ang2vec(np.pi/2, np.pi)
@@ -313,10 +313,78 @@ def make_mask():
     maskk = np.zeros(pixels)
     maskk[maskkk] = 1
     maskk = np.logical_or(np.logical_not(mask),maskk)
-
+    
     global masked_map
     masked_map = hp.ma(map)
     masked_map.mask = maskk
+
+def alm_stats():
+    maps = {
+        "map" : map,
+        "masked_map" : masked_map,
+        "disc" : masked_map[disc]
+    }
+    x = input("what are we working with here???? ")
+    working_map = maps[x]
+    alms = hp.map2alm(working_map)
+    print(alms[0])
+    print(alms[1])
+    
+
+def masked_bulk_sim():
+    start_seed = int(input("Starting Seed: "))
+    amount = int(input("How many simulations? "))
+
+    with open("../../dump/masked_stats{}{}.csv".format(start_seed,amount), "a") as file:
+        writer = csv.writer(file)
+        writer.writerow(["number", "mean", "variance", "skew", "kurtosis", "dagostino"])
+
+    for i in range(amount):
+        np.random.seed(int(i+start_seed))
+        NSIDE = 2048
+        lmax = 1024
+
+        pars = camb.CAMBparams()
+        pars.set_cosmology(H0=67.5)
+        pars.set_for_lmax(lmax)
+        results = camb.get_results(pars)
+        cl = results.get_cmb_power_spectra(
+            params=pars,
+            lmax=lmax,
+            CMB_unit = 'K',
+            raw_cl=True
+        )['total'][:,0]
+        
+        '''cl = np.zeros(lmax + 1)
+        ells = np.arange(lmax + 1)
+        cl[1:] = 1/(ells[1:] * (ells[1:] + 1))'''
+
+        alm = hp.synalm(cl,lmax=lmax)
+        
+        cmb_map = hp.alm2map(alm,NSIDE,lmax)
+        masked_cmb = hp.ma(cmb_map)
+        masked_cmb.mask = maskk
+
+        if (i < 3):
+            hp.mollview(masked_cmb, norm="hist", title="current map")
+            plt.savefig("../../dump/masked_cmb_{}.png".format(i))
+            plt.close()
+        
+        mean = np.mean(masked_cmb)
+        variance = np.var(masked_cmb)
+        skew = scipy.stats.skew(masked_cmb)
+        kurt = scipy.stats.kurtosis(masked_cmb)
+        dagostino = scipy.stats.normaltest(masked_cmb)
+
+        statistic = [i,mean,variance,skew,kurt,dagostino]
+        with open("../../dump/masked_stats{}{}.csv".format(start_seed,amount), "a") as file:
+            writer = csv.writer(file)
+            writer.writerow(statistic)
+        print(statistic)
+        
+
+
+    
 
 '''
 Function dictionary
@@ -339,6 +407,7 @@ function_dictionary = {
     "simulate_two" : simulate_two,
     "bad_sim" : bad_sim,
     "bulk" : bulk_simulate,
+    "alm_stats" : alm_stats,
 }
 
 '''
