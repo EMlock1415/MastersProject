@@ -31,7 +31,9 @@ pixels = hp.nside2npix(NSIDE)
 
 inputting = True
 map=[]
+sim_map = []
 masked_map = []
+masked_sim_map = []
 disc = []
 mask = hp.read_map("../../PlanckMaps/COM_Mask_CMB-common-Mask-Int_2048_R3.00.fits")
 maskk = np.zeros(pixels)
@@ -57,6 +59,8 @@ def load_map():
     try:
         print("Reading map with frequency {}".format(frequency))
         map = hp.ud_grade(hp.read_map(planckMaps[int(frequency)]),2048)*(10**4) # Scaling to make variance = 1
+        if int(frequency) == 100:
+            map[45581992] = 0
     except:
         print("Invalid frequency probably")
 
@@ -78,7 +82,7 @@ def save_map():
     plt.savefig("../../dump/{}.png".format(location))
     plt.close()
 
-    print(saved_map[25000000])
+    #print(saved_map[25000000])
     #plt.savefig("dump/mapp.png")
 
 def histograms():
@@ -151,6 +155,28 @@ def dagostino():
     a = scipy.stats.normaltest(working_map)
     print("D'Agostino K^2 test of {}: {}".format(x,a))
 
+def KStest():
+
+    global masked_map
+    global masked_sim_map
+
+
+    working_masked_map1 = masked_map.compressed() - np.mean(masked_map)
+    working_masked_sim_map1 = masked_sim_map.compressed() - np.mean(masked_sim_map)
+   
+
+    a = scipy.stats.kstest(working_masked_map1, working_masked_sim_map1)
+    print(a)
+
+    
+    file_name = input("File name: ")
+    plt.ecdf(working_masked_map1[::50], label="Real Map")
+    plt.ecdf(working_masked_sim_map1[::50], label="Simulated Map")
+    plt.legend()
+    plt.savefig("../../dump/{}.png".format(file_name))
+    plt.close()
+
+
 def create_disc():
     phi =  float(input("Phi (north to south, [0,pi])" ) ) # north to south
     theta =  float(input("Theta (west to east, [0,2pi])" ) )
@@ -166,6 +192,7 @@ def create_disc():
     disc = d
 
 def simulation():
+    global sim_map
     global map
     seed = input("Seed")
     np.random.seed(int(seed))
@@ -202,13 +229,18 @@ def simulation():
     cmb_map = hp.alm2map(alm,NSIDE,lmax)*(10**4)
 
 
-    hp.mollview(cmb_map, unit="K", norm="hist")
+    sim_map = cmb_map
+    map = cmb_map
+
+    global masked_sim_map
+    masked_sim_map = hp.ma(sim_map)
+    masked_sim_map.mask = maskk
+
+    hp.mollview(masked_sim_map, unit="K", norm="hist")
     x = input("Simulation file name: ")
     plt.title("CMB sim: seed = {}, lmax = {}, nside = {}".format(seed,lmax,NSIDE))
     plt.savefig("../../dump/{}.png".format(x))
     plt.close()
-
-    map = cmb_map
 
 def simulate_two():
     global map
@@ -355,9 +387,7 @@ def masked_bulk_sim():
             raw_cl=True
         )['total'][:,0]
         
-        '''cl = np.zeros(lmax + 1)
-        ells = np.arange(lmax + 1)
-        cl[1:] = 1/(ells[1:] * (ells[1:] + 1))'''
+        
 
         alm = hp.synalm(cl,lmax=lmax)
         
@@ -381,6 +411,7 @@ def masked_bulk_sim():
             writer = csv.writer(file)
             writer.writerow(statistic)
         print(statistic)
+
         
 
 
@@ -402,6 +433,7 @@ function_dictionary = {
     "mean" : mean,
     "variance" : var,
     "dagostino" : dagostino,
+    "kstest" : KStest,
     "create_disc" : create_disc,
     "simulate" : simulation,
     "simulate_two" : simulate_two,
@@ -421,12 +453,12 @@ while (inputting == True):
     if (inputt == "escape"):
         inputting = False
         break
-    try:
+    '''try:
         function_dictionary[inputt]()
     except:
-        print("Something went wrong")
+        print("Something went wrong")'''
     
-    '''function_dictionary[inputt]()'''
+    function_dictionary[inputt]()
     
 
 
