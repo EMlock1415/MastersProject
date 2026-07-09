@@ -161,20 +161,66 @@ def KStest():
     global masked_sim_map
 
 
-    working_masked_map1 = masked_map.compressed() - np.mean(masked_map)
-    working_masked_sim_map1 = masked_sim_map.compressed() - np.mean(masked_sim_map)
+    working_masked_map1 = (masked_map.compressed() - np.mean(masked_map))/np.sqrt(np.var(masked_map))
+    working_masked_sim_map1 = (masked_sim_map.compressed() - np.mean(masked_sim_map))/np.sqrt(np.var(masked_sim_map))
+
+    print(np.mean(working_masked_map1))
+    print(np.var(working_masked_map1))
+
+    working_masked_map2 = (masked_map.compressed() - np.mean(masked_map))
+    working_masked_sim_map2 = (masked_sim_map.compressed() - np.mean(masked_sim_map))
    
 
     a = scipy.stats.kstest(working_masked_map1, working_masked_sim_map1)
+    b = scipy.stats.kstest(working_masked_map2, working_masked_sim_map2)
+    print("var adjusted")
     print(a)
+    print("not var adjusted")
+    print(b)
 
     
-    file_name = input("File name: ")
+    file_name = input("File name 1: ")
     plt.ecdf(working_masked_map1[::50], label="Real Map")
     plt.ecdf(working_masked_sim_map1[::50], label="Simulated Map")
     plt.legend()
     plt.savefig("../../dump/{}.png".format(file_name))
     plt.close()
+
+    file_name = input("File name 2: ")
+    plt.ecdf(working_masked_map2[::50], label="Real Map")
+    plt.ecdf(working_masked_sim_map2[::50], label="Simulated Map")
+    plt.legend()
+    plt.savefig("../../dump/{}.png".format(file_name))
+    plt.close()
+
+def multivariate():
+    global masked_map
+    #global masked_sim_map
+
+
+    working_masked_map1 = (masked_map.compressed() - np.mean(masked_map))/np.sqrt(np.var(masked_map))
+    #working_masked_sim_map1 = (masked_sim_map.compressed() - np.mean(masked_sim_map))/np.sqrt(np.var(masked_sim_map))
+
+    #data = np.array([working_masked_map1],[working_masked_map1])
+    
+    #S = np.cov(data)
+    #S_inv = np.linalg.inv(S)
+
+    
+
+    D = np.linalg.matrix_transpose(working_masked_map1) * 1/np.var(working_masked_map1) @ working_masked_map1
+
+    skew = np.sum(D**3)/(np.len(D)**2)
+    kurt = np.sum(np.diag(D)**2)/np.len(D)
+
+    print("Multivariate skew: ")
+    print(skew)
+    print("Multivariate kurtosis: ")
+    print(kurt)
+
+    
+
+    #scipy.spatial.distance.mahalanobis(masked_map,masked_map,)
 
 
 def create_disc():
@@ -412,10 +458,98 @@ def masked_bulk_sim():
             writer.writerow(statistic)
         print(statistic)
 
+'''
+Large scale production
+'''
+
+def bulk_ks():
+    NSIDE = 2048
+    pixels = hp.nside2npix(NSIDE)
+    frequencies = [30,44,70,100,143,217,353,545,857]
+    res = 20
+    size = 25
+    vector = hp.ang2vec(np.pi/2, np.pi)
+    maskkk = hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size))
+    for i in range(res):
+        vector = hp.ang2vec(np.pi/2, np.pi+i*2*np.pi/res)
+        maskkk = np.append(maskkk,hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size)))
+    maskk = np.zeros(pixels)
+    maskk[maskkk] = 1
+    maskk = np.logical_or(np.logical_not(mask),maskk)
+    
+    
+
+    for i in range(0,9):
+        map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
+        if frequencies[i] == 100:
+            map[45581992] = 0
+
+        masked_map = hp.ma(map)
+        masked_map.mask = maskk
+
         
+
+        x = 10
+
+        with open("../../dump/KSTEST.csv", "a") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Seed", "Test Results"])
+
+        for i in range(0,x):
+
+            '''Simulation'''
+
+            seed = i
+            np.random.seed(int(seed))
+            pixels = hp.nside2npix(NSIDE)
+            
+
+            lmax = 2048
+
+            np.random.seed(int(seed))
+            pars = camb.CAMBparams()
+            pars.set_cosmology(H0=67.5)
+            pars.set_for_lmax(lmax)
+            np.random.seed(int(seed))
+            results = camb.get_results(pars)
+            cl = results.get_cmb_power_spectra(
+                params=pars,
+                lmax=lmax,
+                CMB_unit = 'K',
+                raw_cl=True
+            )['total'][:,0]
+
+            alm = hp.synalm(cl,lmax=lmax)
+                
+            sim_map = hp.alm2map(alm,NSIDE,lmax)
+
+            masked_sim_map = hp.ma(sim_map)
+            masked_sim_map.mask = maskk
+
+            '''Tests'''
+
+            working_masked_map1 = (masked_map.compressed() - np.mean(masked_map))/np.sqrt(np.var(masked_map))
+            working_masked_sim_map1 = (masked_sim_map.compressed() - np.mean(masked_sim_map))/np.sqrt(np.var(masked_sim_map))
+
+            a = scipy.stats.kstest(working_masked_map1, working_masked_sim_map1)
+
+            with open("../../dump/KSTEST.csv", "a") as file:
+                writer = csv.writer(file)
+                writer.writerow([seed, a])
+            print(a)
+
+            
+
+
+
 
 
     
+
+        
+        
+        
+        
 
 '''
 Function dictionary
@@ -441,6 +575,8 @@ function_dictionary = {
     "bulk" : bulk_simulate,
     "masked_bulk" : masked_bulk_sim,
     "alm_stats" : alm_stats,
+    "multivariate" : multivariate,
+    "bulk_ks" : bulk_ks,
 }
 
 '''
