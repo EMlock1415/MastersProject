@@ -208,7 +208,7 @@ def multivariate():
 
     
 
-    D = np.linalg.matrix_transpose(working_masked_map1) * 1/np.var(working_masked_map1) @ working_masked_map1
+    D = np.linalg.matrix_transpose(working_masked_map1) @ 1/np.var(working_masked_map1) @ working_masked_map1
 
     skew = np.sum(D**3)/(np.len(D)**2)
     kurt = np.sum(np.diag(D)**2)/np.len(D)
@@ -476,6 +476,10 @@ def bulk_ks():
     maskk = np.zeros(pixels)
     maskk[maskkk] = 1
     maskk = np.logical_or(np.logical_not(mask),maskk)
+
+    with open("../../dump/KSTEST.csv", "a") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Seed", "Test Results"])
     
     
 
@@ -487,15 +491,17 @@ def bulk_ks():
         masked_map = hp.ma(map)
         masked_map.mask = maskk
 
+        with open("../../dump/KSTEST.csv", "a") as file:
+            writer = csv.writer(file)
+            writer.writerow(["-----------", "------------------------"])
+
         
 
         x = 10
 
-        with open("../../dump/KSTEST.csv", "a") as file:
-            writer = csv.writer(file)
-            writer.writerow(["Seed", "Test Results"])
+        
 
-        for i in range(0,x):
+        for i in range(0,x-1):
 
             '''Simulation'''
 
@@ -538,16 +544,165 @@ def bulk_ks():
                 writer.writerow([seed, a])
             print(a)
 
+
+def bulk_ks_disks():
+
+    NSIDE = 2048
+    pixels = hp.nside2npix(NSIDE)
+    frequencies = [30,44,70,100,143,217,353,545,857]
+    res = 20
+    size = 25
+    vector = hp.ang2vec(np.pi/2, np.pi)
+    maskkk = hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size))
+    for i in range(res):
+        vector = hp.ang2vec(np.pi/2, np.pi+i*2*np.pi/res)
+        maskkk = np.append(maskkk,hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size)))
+    maskk = np.zeros(pixels)
+    maskk[maskkk] = 1
+    maskk = np.logical_or(np.logical_not(mask),maskk)
+
+    with open("../../dump/KSTESTDISC.csv", "a") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Disc", "Test Results"])
+    
+    for i in range (0,9):
+        map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
+        if frequencies[i] == 100:
+            map[45581992] = 0
+
+        masked_map = hp.ma(map)
+        masked_map.mask = maskk
+
+        
+        
+
+        x = 10
+        y = 10
+        for i in range(0,x):
+            phi =  float(np.random.uniform(0,np.pi) ) # north to south
+            theta =  float(np.random.uniform(0,np.pi*2))
+            vector = hp.ang2vec(phi,theta)
+            d = hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(2))
+
+            with open("../../dump/KSTESTDISC.csv", "a") as file:
+                    writer = csv.writer(file)
+                    writer.writerow([vector,"-----------------"])
             
 
+            for i in range(0,y):
 
+                phi1 =  float(np.random.uniform(0,np.pi) ) # north to south
+                theta1 =  float(np.random.uniform(0,np.pi*2))
+                vector1 = hp.ang2vec(phi1,theta1)
+                e = hp.query_disc(nside=NSIDE,vec = vector1, radius=np.radians(2) )
+                a = scipy.stats.kstest(masked_map[d],masked_map[e])
+                with open("../../dump/KSTESTDISC.csv", "a") as file:
+                    writer = csv.writer(file)
+                    writer.writerow([vector1,a])
+                print(a)
+        
+def north_south_contrast():
+    NSIDE = 2048
+    pixels = hp.nside2npix(NSIDE)
+    frequencies = [30,44,70,100,143,217,353,545,857]
+    res = 20
+    size = 25
+    vector = hp.ang2vec(np.pi/2, np.pi)
+    maskkk = hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size))
+    for i in range(res):
+        vector = hp.ang2vec(np.pi/2, np.pi+i*2*np.pi/res)
+        maskkk = np.append(maskkk,hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size)))
+    maskk = np.zeros(pixels)
+    maskk[maskkk] = 1
+    maskk = np.logical_or(np.logical_not(mask),maskk)
 
+    vector1 = hp.ang2vec(0,np.pi)
+    vector2 = hp.ang2vec(np.pi,np.pi)
 
-
+    with open("../../dump/asymetrytest.csv", "a") as file:
+        writer = csv.writer(file)
+        writer.writerow(["frequency","m1","m2", "s1", "s2", "k1", "k2","kstest"])
     
+    for i in range (0,9):
+        map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
+        if frequencies[i] == 100:
+            map[45581992] = 0
+
+
+
+        masked_map = hp.ma(map)
+        masked_map.mask = maskk
+
+        disk1 = hp.query_disc(nside=NSIDE,vec=vector1,radius=np.radians(30))
+        disk2 = hp.query_disc(nside=NSIDE,vec=vector2,radius=np.radians(30))
+
+        mean1 = np.mean(masked_map[disk1])
+        mean2 = np.mean(masked_map[disk2])
+
+        skew1 = scipy.stats.skew(masked_map[disk1])
+        skew2 = scipy.stats.skew(masked_map[disk2])
+
+        kurt1 = scipy.stats.kurtosis(masked_map[disk1])
+        kurt2 = scipy.stats.kurtosis(masked_map[disk2])
+
+        a = scipy.stats.kstest(masked_map[disk1],masked_map[disk2])
+        print(a)
+
+        with open("../../dump/asymetrytest.csv", "a") as file:
+            writer = csv.writer(file)
+            writer.writerow([frequencies[i],mean1,mean2,skew1,skew2,kurt1,kurt2,a])
+
+def masked_real_stats():
+    NSIDE = 2048
+    pixels = hp.nside2npix(NSIDE)
+    frequencies = [30,44,70,100,143,217,353,545,857]
+    res = 20
+    size = 25
+    vector = hp.ang2vec(np.pi/2, np.pi)
+    maskkk = hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size))
+    for i in range(res):
+        vector = hp.ang2vec(np.pi/2, np.pi+i*2*np.pi/res)
+        maskkk = np.append(maskkk,hp.query_disc(nside=NSIDE,vec=vector,radius=np.radians(size)))
+    
+    maskk = np.zeros(pixels)
+    maskk[maskkk] = 1
+    maskk = np.logical_or(np.logical_not(mask),maskk)
+
+    with open("../../dump/REALMAPS.csv", "a") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Frequency", "mean", "var", "skew", "kurt", "dagostino"])
+    
+    for i in range (0,9):
+        map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
+        if frequencies[i] == 100:
+            map[45581992] = 0
+
+        masked_map = hp.ma(map)
+        masked_map.mask = maskk
 
         
+        mean = np.mean(masked_map)
+        var = np.var(masked_map)
+        skew = scipy.stats.skew(masked_map)
+        kurt = scipy.stats.kurtosis(masked_map)
+        a = scipy.stats.normaltest(masked_map)
+
+        with open("../../dump/REALMAPS.csv", "a") as file:
+            writer = csv.writer(file)
+            writer.writerow([frequencies[i], mean, var, skew, kurt, a])
+
+
+
+
+
         
+    
+        
+
+
+        
+
+            
         
         
 
@@ -577,6 +732,9 @@ function_dictionary = {
     "alm_stats" : alm_stats,
     "multivariate" : multivariate,
     "bulk_ks" : bulk_ks,
+    "bulk_ks_disc" : bulk_ks_disks,
+    "ns" : north_south_contrast,
+    "real_stats" : masked_real_stats,
 }
 
 '''
