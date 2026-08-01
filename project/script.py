@@ -78,7 +78,7 @@ def save_map():
     saved_map = maps[input("map/masked_map? ")]
     print(len(saved_map))
     location = input("Save file to where: ")
-    hp.mollview(saved_map, norm="hist", title="current map")
+    hp.mollview(saved_map, norm="hist", title="", margins=[0.1,0.1,0.1,0.1])
     plt.savefig("../../dump/{}.png".format(location))
     plt.close()
 
@@ -415,7 +415,7 @@ def masked_bulk_sim():
 
     with open("../../dump/masked_stats{}{}.csv".format(start_seed,amount), "a") as file:
         writer = csv.writer(file)
-        writer.writerow(["number", "mean", "variance", "skew", "kurtosis", "dagostino"])
+        writer.writerow(["number", "mean", "variance", "skew", "kurtosis", "dagostino","dag_p"])
 
     for i in range(amount):
         np.random.seed(int(i+start_seed))
@@ -452,7 +452,9 @@ def masked_bulk_sim():
         kurt = scipy.stats.kurtosis(masked_cmb)
         dagostino = scipy.stats.normaltest(masked_cmb)
 
-        statistic = [i,mean,variance,skew,kurt,dagostino]
+        
+
+        statistic = [i,mean,variance,skew,kurt,dagostino.statistic,dagostino.pvalue]
         with open("../../dump/masked_stats{}{}.csv".format(start_seed,amount), "a") as file:
             writer = csv.writer(file)
             writer.writerow(statistic)
@@ -477,27 +479,27 @@ def bulk_ks():
     maskk[maskkk] = 1
     maskk = np.logical_or(np.logical_not(mask),maskk)
 
-    with open("../../dump/KSTEST.csv", "a") as file:
-        writer = csv.writer(file)
-        writer.writerow(["Seed", "Test Results"])
+    
     
     
 
-    for i in range(0,9):
-        map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
-        if frequencies[i] == 100:
+    for j in range(0,9):
+
+        with open("../../dump/KSTEST{}.csv".format(frequencies[j]), "a") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Seed", "Test Result", "p-value", "location"])
+        map = hp.ud_grade(hp.read_map(planckMaps[frequencies[j]]),2048)*(10**4) # Scaling to make variance = 1
+        if frequencies[j] == 100:
             map[45581992] = 0
 
         masked_map = hp.ma(map)
         masked_map.mask = maskk
 
-        with open("../../dump/KSTEST.csv", "a") as file:
-            writer = csv.writer(file)
-            writer.writerow(["-----------", "------------------------"])
+       
 
         
 
-        x = 10
+        x = 50
 
         
 
@@ -539,9 +541,11 @@ def bulk_ks():
 
             a = scipy.stats.kstest(working_masked_map1, working_masked_sim_map1)
 
-            with open("../../dump/KSTEST.csv", "a") as file:
+            b = [seed, a.statistic,a.pvalue,a.statistic_location]
+
+            with open("../../dump/KSTEST{}.csv".format(frequencies[j]), "a") as file:
                 writer = csv.writer(file)
-                writer.writerow([seed, a])
+                writer.writerow(b)
             print(a)
 
 
@@ -621,7 +625,7 @@ def north_south_contrast():
 
     with open("../../dump/asymetrytest.csv", "a") as file:
         writer = csv.writer(file)
-        writer.writerow(["frequency","m1","m2", "s1", "s2", "k1", "k2","kstest"])
+        writer.writerow(["frequency","m1","m2", "s1", "s2", "k1", "k2","ksvalue","ksp,ksloc"])
     
     for i in range (0,9):
         map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
@@ -645,12 +649,15 @@ def north_south_contrast():
         kurt1 = scipy.stats.kurtosis(masked_map[disk1])
         kurt2 = scipy.stats.kurtosis(masked_map[disk2])
 
-        a = scipy.stats.kstest(masked_map[disk1],masked_map[disk2])
+        test1 = (masked_map[disk1]-np.mean(masked_map[disk1]))/np.var(masked_map[disk1])
+        test2 = (masked_map[disk2]-np.mean(masked_map[disk2]))/np.var(masked_map[disk2])
+
+        a = scipy.stats.kstest(test1,test2)
         print(a)
 
         with open("../../dump/asymetrytest.csv", "a") as file:
             writer = csv.writer(file)
-            writer.writerow([frequencies[i],mean1,mean2,skew1,skew2,kurt1,kurt2,a])
+            writer.writerow([frequencies[i],mean1,mean2,skew1,skew2,kurt1,kurt2,a.statistic,a.pvalue,a.statistic_location])
 
 def masked_real_stats():
     NSIDE = 2048
@@ -670,7 +677,7 @@ def masked_real_stats():
 
     with open("../../dump/REALMAPS.csv", "a") as file:
         writer = csv.writer(file)
-        writer.writerow(["Frequency", "mean", "var", "skew", "kurt", "dagostino"])
+        writer.writerow(["Frequency", "mean", "var", "skew", "kurt", "dagostino", "dag_p"])
     
     for i in range (0,9):
         map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
@@ -689,7 +696,7 @@ def masked_real_stats():
 
         with open("../../dump/REALMAPS.csv", "a") as file:
             writer = csv.writer(file)
-            writer.writerow([frequencies[i], mean, var, skew, kurt, a])
+            writer.writerow([frequencies[i], mean, var, skew, kurt, a.statistic,a.pvalue])
 
 
 
@@ -747,12 +754,12 @@ while (inputting == True):
     if (inputt == "escape"):
         inputting = False
         break
-    '''try:
+    try:
         function_dictionary[inputt]()
     except:
-        print("Something went wrong")'''
+        print("Something went wrong")
     
-    function_dictionary[inputt]()
+    #function_dictionary[inputt]()
     
 
 

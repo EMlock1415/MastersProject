@@ -4,3 +4,4 @@ logging
 matplotlib
 scipy
 camb
+pandas
