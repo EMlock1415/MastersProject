@@ -625,7 +625,7 @@ def north_south_contrast():
 
     with open("../../dump/asymetrytest.csv", "a") as file:
         writer = csv.writer(file)
-        writer.writerow(["frequency","m1","m2", "s1", "s2", "k1", "k2","ksvalue","ksp,ksloc"])
+        writer.writerow(["frequency","m1","m2", "s1", "s2", "k1", "k2","dagvalue1", "dagvalue2" "ksvalue","ksp","ksloc"])
     
     for i in range (0,9):
         map = hp.ud_grade(hp.read_map(planckMaps[frequencies[i]]),2048)*(10**4) # Scaling to make variance = 1
@@ -649,6 +649,9 @@ def north_south_contrast():
         kurt1 = scipy.stats.kurtosis(masked_map[disk1])
         kurt2 = scipy.stats.kurtosis(masked_map[disk2])
 
+        dag1 = scipy.stats.normaltest(masked_map[disk1]).statistic
+        dag2 = scipy.stats.normaltest(masked_map[disk2]).statistic
+
         test1 = (masked_map[disk1]-np.mean(masked_map[disk1]))/np.var(masked_map[disk1])
         test2 = (masked_map[disk2]-np.mean(masked_map[disk2]))/np.var(masked_map[disk2])
 
@@ -657,7 +660,7 @@ def north_south_contrast():
 
         with open("../../dump/asymetrytest.csv", "a") as file:
             writer = csv.writer(file)
-            writer.writerow([frequencies[i],mean1,mean2,skew1,skew2,kurt1,kurt2,a.statistic,a.pvalue,a.statistic_location])
+            writer.writerow([frequencies[i],mean1,mean2,skew1,skew2,kurt1,kurt2,dag1,dag2,a.statistic,a.pvalue,a.statistic_location])
 
 def masked_real_stats():
     NSIDE = 2048
