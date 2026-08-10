@@ -1,5 +1,8 @@
 # Masters Project
 
+The following is a brief readme file to introduce the code for this project (hosted at https://github.com/EMlock1415/MastersProject)
+
+
 - Currently used maps are found at https://irsa.ipac.caltech.edu/data/Planck/release_3/all-sky-maps/scripts/get_planck_maps_primary.sh (as of 10/08/2026)
 
 - Component separation common mask file found at https://irsa.ipac.caltech.edu/data/Planck/release_3/ancillary-data/previews/COM_Mask_CMB-common-Mask-Int_2048_R3.00/index.html
